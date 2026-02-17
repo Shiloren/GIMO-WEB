@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GIMO WEB
 
-## Getting Started
+Landing de GIMO construida con:
 
-First, run the development server:
+- **Next.js (App Router + TypeScript + Tailwind)**
+- **Sanity** como CMS (Studio separado con `sanity dev`)
+- **Firebase Auth (Google Sign-In)** para autenticación
+- **Vercel** para despliegue
+
+## 1) Instalación
+
+```bash
+npm install
+```
+
+## 2) Variables de entorno
+
+Copia el ejemplo y completa valores:
+
+```bash
+copy .env.example .env.local
+```
+
+Variables necesarias:
+
+- `NEXT_PUBLIC_SANITY_PROJECT_ID`
+- `NEXT_PUBLIC_SANITY_DATASET` (normalmente `production`)
+- `NEXT_PUBLIC_SANITY_API_VERSION` (ejemplo: `2026-01-01`)
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+
+## 3) Arrancar en local
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Web: `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+En otro terminal, para abrir Sanity Studio:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run sanity
+```
 
-## Learn More
+- Sanity Studio: `http://localhost:3333`
 
-To learn more about Next.js, take a look at the following resources:
+## 4) Configurar Sanity rápido
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Crea proyecto/dataset en Sanity.
+2. Rellena `NEXT_PUBLIC_SANITY_PROJECT_ID` y dataset.
+3. Entra al Studio (`http://localhost:3333`) y crea/edita:
+   - `siteSettings`
+   - `landingPage`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Si no hay contenido en Sanity, la web usa **fallbacks locales** para no romper diseño.
 
-## Deploy on Vercel
+## 5) Firebase Auth con Google (sprint mode 🚀)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Ve a [Firebase Console](https://console.firebase.google.com/) y crea proyecto.
+2. En **Authentication > Sign-in method**, activa **Google**.
+3. En **Project settings > Your apps**, registra app web y copia credenciales.
+4. Pega las credenciales en `.env.local` usando las variables `NEXT_PUBLIC_FIREBASE_*`.
+5. En Firebase Auth, añade tus dominios autorizados:
+   - `localhost`
+   - tu dominio de Vercel (`*.vercel.app` o dominio custom)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Con eso el botón **Sign in Google** del navbar funcionará.
+
+## 6) Deploy en Vercel
+
+1. Importa el repo en Vercel.
+2. Añade las mismas variables de entorno de `.env.local` en **Project Settings > Environment Variables**.
+3. Deploy.
+
+## Scripts
+
+- `npm run dev` → desarrollo
+- `npm run build` → build producción
+- `npm run start` → arranque producción
+- `npm run lint` → lint
+- `npm run sanity` → sanity dev (CLI)
+- `npm run sanity:deploy` → deploy de Sanity Studio
