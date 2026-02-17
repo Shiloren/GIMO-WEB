@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Chrome } from "lucide-react";
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "firebase/auth";
+import Link from "next/link";
 
 import { auth } from "@/lib/firebase";
 
@@ -42,21 +43,18 @@ export function GoogleAuthButton({ signedInLabel = "Conectado", className = "" }
         }
     };
 
-    const handleSignOut = async () => {
-        if (!auth) return;
-        await signOut(auth);
-        setUserName(null);
-    };
 
     if (userName) {
         return (
-            <button
-                type="button"
-                onClick={handleSignOut}
-                className={`text-sm font-medium text-emerald-300 hover:text-emerald-200 transition-colors ${className}`}
+            <Link
+                href="/account"
+                className={`text-sm font-medium text-emerald-300 hover:text-white transition-all inline-flex items-center gap-2 group ${className}`}
             >
-                {signedInLabel}: {userName}
-            </button>
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="group-hover:underline underline-offset-4">
+                    {signedInLabel}: {userName}
+                </span>
+            </Link>
         );
     }
 
