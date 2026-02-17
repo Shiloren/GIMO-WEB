@@ -18,6 +18,7 @@ import {
     X,
     Zap,
 } from "lucide-react";
+import Link from "next/link";
 
 import type { LandingData } from "@/lib/default-content";
 import { GoogleAuthButton } from "@/components/google-auth-button";
@@ -73,9 +74,12 @@ export function GimoLanding({ data }: GimoLandingProps) {
 
                     <div className="hidden md:flex items-center gap-4">
                         <GoogleAuthButton className="mr-1" />
-                        <button className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-black hover:bg-slate-200 transition-colors">
+                        <Link
+                            href="/empezar-gratis"
+                            className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-black hover:bg-slate-200 transition-colors"
+                        >
                             Empezar Gratis
-                        </button>
+                        </Link>
                     </div>
 
                     <button className="md:hidden text-slate-400" onClick={() => setIsMenuOpen((prev) => !prev)} aria-label="Abrir menú">
@@ -91,6 +95,12 @@ export function GimoLanding({ data }: GimoLandingProps) {
                             </a>
                         ))}
                         <GoogleAuthButton />
+                        <Link
+                            href="/empezar-gratis"
+                            className="inline-flex text-sm font-medium px-4 py-2 rounded-lg bg-white text-black hover:bg-slate-200 transition-colors"
+                        >
+                            Empezar Gratis
+                        </Link>
                     </div>
                 )}
             </nav>

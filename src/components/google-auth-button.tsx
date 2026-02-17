@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Chrome } from "lucide-react";
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 
 import { auth } from "@/lib/firebase";
 
@@ -14,6 +14,14 @@ type GoogleAuthButtonProps = {
 export function GoogleAuthButton({ signedInLabel = "Conectado", className = "" }: GoogleAuthButtonProps) {
     const [userName, setUserName] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!auth) return;
+
+        return onAuthStateChanged(auth, (user) => {
+            setUserName(user?.displayName || user?.email || null);
+        });
+    }, []);
 
     const handleSignIn = async () => {
         if (!auth) {

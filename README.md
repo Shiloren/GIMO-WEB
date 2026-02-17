@@ -67,9 +67,12 @@ Si no hay contenido en Sanity, la web usa **fallbacks locales** para no romper d
 4. Pega las credenciales en `.env.local` usando las variables `NEXT_PUBLIC_FIREBASE_*`.
 5. En Firebase Auth, añade tus dominios autorizados:
    - `localhost`
+   - `127.0.0.1`
    - tu dominio de Vercel (`*.vercel.app` o dominio custom)
+Con eso funcionarán:
 
-Con eso el botón **Sign in Google** del navbar funcionará.
+- el botón **Sign in Google** del navbar
+- la página **/empezar-gratis** con acceso por Google
 
 ## 6) Deploy en Vercel
 
