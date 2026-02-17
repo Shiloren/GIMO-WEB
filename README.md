@@ -73,7 +73,11 @@ Con eso el botón **Sign in Google** del navbar funcionará.
 
 ## 6) Deploy en Vercel
 
-1. Importa el repo en Vercel.
+1. Importa el repo en Vercel usando esta URL:
+
+   `https://github.com/Shiloren/GIMO-WEB`
+
+   > En Vercel: **Add New... > Project > Import Git Repository**.
 2. Añade las mismas variables de entorno de `.env.local` en **Project Settings > Environment Variables**.
 3. Deploy.
 
