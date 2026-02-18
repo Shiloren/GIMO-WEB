@@ -26,9 +26,33 @@ function initAdmin(): App {
   return initializeApp({ credential: cert(serviceAccount as any) });
 }
 
-const adminApp = initAdmin();
-export const adminDb: Firestore = getFirestore(adminApp);
-export const adminAuth: Auth = getAuth(adminApp);
+// Lazy initialization — no lanza error en build time si la variable no está configurada
+let _adminApp: App | null = null;
+
+function getAdminApp(): App {
+  if (!_adminApp) _adminApp = initAdmin();
+  return _adminApp;
+}
+
+export function getAdminDb(): Firestore {
+  return getFirestore(getAdminApp());
+}
+
+export function getAdminAuth(): Auth {
+  return getAuth(getAdminApp());
+}
+
+// Aliases para compatibilidad con código existente que importa adminDb/adminAuth directamente
+export const adminDb: Firestore = new Proxy({} as Firestore, {
+  get(_target, prop) {
+    return (getAdminDb() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
+export const adminAuth: Auth = new Proxy({} as Auth, {
+  get(_target, prop) {
+    return (getAdminAuth() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
 
 /** Admin email list — estos usuarios tienen rol "admin" automáticamente */
 export const ADMIN_EMAILS = (

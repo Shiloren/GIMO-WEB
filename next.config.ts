@@ -1,9 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  turbopack: {
-    root: "c:/Users/shilo/Documents/Github/GIMO WEB/gimo-web",
-  },
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

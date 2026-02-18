@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getAuth, onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { LicenseKeyCard } from "@/components/license-key-card";
 import { InstallationManager } from "@/components/installation-manager";
 import { SubscriptionCard } from "@/components/subscription-card";
 import { QuickSetupGuide } from "@/components/quick-setup-guide";
 import { AdminPanel } from "@/components/admin-panel";
+import { LockedCard } from "@/components/locked-card";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -71,8 +72,14 @@ export default function AccountPage() {
   const [data, setData] = useState<AccountState>({
     license: null, activations: [], subscription: null, isAdmin: false, adminLicenses: [],
   });
-  const searchParams = useSearchParams();
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const router = useRouter();
+
+  // Leer query param sin useSearchParams (evita Suspense boundary requirement)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setCheckoutSuccess(params.get("checkout") === "success");
+  }, []);
 
   // Auth listener
   useEffect(() => {
@@ -157,7 +164,6 @@ export default function AccountPage() {
   }
 
   const { license, activations, subscription, isAdmin, adminLicenses } = data;
-  const checkoutSuccess = searchParams.get("checkout") === "success";
 
   return (
     <div className="min-h-screen bg-background">
@@ -184,23 +190,124 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* Sin suscripción */}
+        {/* Sin suscripción — dashboard bloqueado */}
         {!license && (
-          <div className="rounded-xl border border-border bg-card p-8 text-center space-y-4">
-            <h2 className="text-xl font-semibold">Activa GIMO Professional</h2>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>✅ Acceso completo al Multiagent Orchestrator</li>
-              <li>✅ Hasta 2 instalaciones simultáneas</li>
-              <li>✅ Soporte offline con JWT cache cifrado</li>
-              <li>✅ $3 / mes — cancela cuando quieras</li>
-            </ul>
-            <button
-              onClick={handleCheckout}
-              className="px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+          <>
+            {/* Bienvenida con badge Plan: Free */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-muted text-muted-foreground border border-border">
+                Plan: Free
+              </span>
+            </div>
+
+            {/* Card Clave de Licencia — bloqueado */}
+            <LockedCard
+              title="🔑 Clave de Licencia"
+              ctaText="Desbloquea tu clave — $3/mes"
+              onAction={handleCheckout}
             >
-              Suscribirse — $3/mes
-            </button>
-          </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-lg bg-muted/50 border border-border px-4 py-3 font-mono text-sm tracking-widest text-muted-foreground">
+                  XXXX-XXXX-XXXX-XXXX
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-8 w-24 rounded bg-muted/40 border border-border" />
+                  <div className="h-8 w-28 rounded bg-muted/40 border border-border" />
+                </div>
+              </div>
+            </LockedCard>
+
+            {/* Grid 2 columnas: Suscripción + Instalaciones */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card Suscripción — bloqueado */}
+              <LockedCard
+                title="💳 Suscripción"
+                ctaText="Activar plan Standard"
+                onAction={handleCheckout}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Estado</span>
+                    <span className="text-muted-foreground">Sin plan activo</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Plan</span>
+                    <span className="text-muted-foreground">—</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Renovación</span>
+                    <span className="text-muted-foreground">—</span>
+                  </div>
+                  <div className="h-8 w-full rounded bg-muted/40 border border-border mt-2" />
+                </div>
+              </LockedCard>
+
+              {/* Card Instalaciones — bloqueado */}
+              <LockedCard
+                title="🖥 Instalaciones"
+                ctaText="Suscríbete para instalar"
+                onAction={handleCheckout}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Usadas</span>
+                    <span className="text-muted-foreground">0 / 2</span>
+                  </div>
+                  <div className="space-y-2 mt-1">
+                    <div className="flex items-center gap-2 rounded-lg border border-dashed border-border p-2">
+                      <div className="w-2 h-2 rounded-full bg-muted" />
+                      <span className="text-xs text-muted-foreground">Slot vacío</span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-lg border border-dashed border-border p-2">
+                      <div className="w-2 h-2 rounded-full bg-muted" />
+                      <span className="text-xs text-muted-foreground">Slot vacío</span>
+                    </div>
+                  </div>
+                </div>
+              </LockedCard>
+            </div>
+
+            {/* Card Setup Guide — bloqueado */}
+            <LockedCard
+              title="🚀 Guía de instalación rápida"
+              ctaText="Activa tu plan para ver los comandos"
+              onAction={handleCheckout}
+            >
+              <div className="space-y-2 font-mono text-xs">
+                <div className="rounded bg-muted/60 px-3 py-2 text-muted-foreground">
+                  npm install -g gimo-cli
+                </div>
+                <div className="rounded bg-muted/60 px-3 py-2 text-muted-foreground">
+                  gimo auth --key XXXX-XXXX-XXXX-XXXX
+                </div>
+                <div className="rounded bg-muted/60 px-3 py-2 text-muted-foreground">
+                  gimo start
+                </div>
+              </div>
+            </LockedCard>
+
+            {/* Banner CTA inferior */}
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center sm:text-left">
+                <p className="font-semibold text-foreground">Plan Standard — $3/mes</p>
+                <ul className="text-xs text-muted-foreground space-y-0.5">
+                  <li>✅ Clave de licencia personal</li>
+                  <li>✅ Hasta 2 instalaciones simultáneas</li>
+                  <li>✅ Soporte offline con JWT cache cifrado</li>
+                  <li>✅ Cancela cuando quieras</li>
+                </ul>
+              </div>
+              <button
+                onClick={handleCheckout}
+                className="shrink-0 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow"
+              >
+                Comenzar ahora — $3/mes
+              </button>
+            </div>
+          </>
         )}
 
         {/* Con licencia */}
