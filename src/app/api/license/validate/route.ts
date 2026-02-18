@@ -10,8 +10,46 @@ import { Timestamp } from "firebase-admin/firestore";
 
 export const runtime = "nodejs";
 
+// ---------------------------------------------------------------------------
+// Rate limiting por IP — defensa en profundidad
+// ---------------------------------------------------------------------------
+const RATE_WINDOW_MS = 60_000;  // 1 minuto
+const RATE_MAX_REQUESTS = 10;   // máx 10 intentos por minuto por IP
+
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || now > bucket.resetAt) {
+    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+  bucket.count++;
+  return bucket.count > RATE_MAX_REQUESTS;
+}
+
+// Limpieza periódica para evitar memory leak (cada 5 min)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, bucket] of rateBuckets) {
+    if (now > bucket.resetAt) rateBuckets.delete(ip);
+  }
+}, 5 * 60_000);
+
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit por IP
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      ?? req.headers.get("x-real-ip")
+      ?? "unknown";
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { valid: false, error: "Too many requests — try again later" },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { licenseKey, machineFingerprint, machineLabel, os, hostname, appVersion } = body;
 

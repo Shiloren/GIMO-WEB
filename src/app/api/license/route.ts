@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { verifyFirebaseToken } from "@/lib/license";
+import { verifyFirebaseToken, consumePendingKey } from "@/lib/license";
 
 export const runtime = "nodejs";
 
@@ -58,20 +58,8 @@ export async function GET(req: NextRequest) {
     };
   })();
 
-  // Pending key (show-once) — si existe, incluir y eliminar
-  let rawKey: string | null = null;
-  const pendingRef = adminDb.collection("pending_keys").doc(user.uid);
-  const pendingDoc = await pendingRef.get();
-  if (pendingDoc.exists) {
-    const pendingData = pendingDoc.data();
-    // Verificar TTL (10 minutos)
-    const createdAt = pendingData?.createdAt?.toDate() as Date | undefined;
-    if (createdAt && Date.now() - createdAt.getTime() < 10 * 60 * 1000) {
-      rawKey = pendingData?.rawKey as string;
-    }
-    // Eliminar independientemente del TTL (ya fue vista o expiró)
-    await pendingRef.delete();
-  }
+  // Pending key (show-once) — usar helper centralizado
+  const rawKey = await consumePendingKey(user.uid);
 
   return NextResponse.json({
     license: {
