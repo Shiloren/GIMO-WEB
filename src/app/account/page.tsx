@@ -86,7 +86,7 @@ export default function AccountPage() {
     const auth = getAuth();
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (!u) router.push("/login");
+      if (!u) router.push("/");
     });
     return unsub;
   }, [router]);
@@ -157,8 +157,11 @@ export default function AccountPage() {
 
   if (!user || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground text-sm">Cargando...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-t-2 border-emerald-500 border-solid rounded-full animate-spin"></div>
+          <div className="text-emerald-500/50 text-xs font-mono tracking-widest uppercase">Verificando Credenciales...</div>
+        </div>
       </div>
     );
   }
@@ -166,17 +169,23 @@ export default function AccountPage() {
   const { license, activations, subscription, isAdmin, adminLicenses } = data;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-slate-200">
       {/* Header */}
-      <header className="border-b border-border px-6 py-4 flex items-center justify-between">
-        <span className="font-bold text-lg">GIMO</span>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">{user.email}</span>
+      <header className="border-b border-white/5 bg-black/20 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-black text-xs">G</div>
+          <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">GIMO</span>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="hidden sm:flex flex-col items-end">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-tighter">Cuenta Activa</span>
+            <span className="text-xs text-emerald-400/80 font-mono">{user.email}</span>
+          </div>
           <button
             onClick={() => signOut(getAuth())}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="px-4 py-1.5 rounded-full border border-white/10 text-xs font-medium hover:bg-white/5 transition-all"
           >
-            Cerrar sesión
+            Salir
           </button>
         </div>
       </header>
