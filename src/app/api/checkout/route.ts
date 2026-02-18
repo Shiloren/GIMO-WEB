@@ -1,0 +1,46 @@
+/**
+ * POST /api/checkout
+ * Crea una Stripe Checkout Session para suscripción Standard.
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebase-admin";
+import { verifyFirebaseToken } from "@/lib/license";
+import { stripe, STRIPE_STANDARD_PRICE_ID } from "@/lib/stripe";
+
+export const runtime = "nodejs";
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://gimo-web.vercel.app";
+
+export async function POST(req: NextRequest) {
+  const user = await verifyFirebaseToken(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Obtener o crear Stripe Customer
+  const userDoc = await adminDb.collection("users").doc(user.uid).get();
+  let stripeCustomerId: string | undefined = userDoc.data()?.stripeCustomerId;
+
+  if (!stripeCustomerId) {
+    const customer = await stripe.customers.create({
+      email: user.email,
+      metadata: { firebaseUid: user.uid },
+    });
+    stripeCustomerId = customer.id;
+    await adminDb.collection("users").doc(user.uid).set(
+      { stripeCustomerId, email: user.email },
+      { merge: true }
+    );
+  }
+
+  // Crear Checkout Session
+  const session = await stripe.checkout.sessions.create({
+    customer: stripeCustomerId,
+    mode: "subscription",
+    line_items: [{ price: STRIPE_STANDARD_PRICE_ID, quantity: 1 }],
+    metadata: { firebaseUid: user.uid },
+    success_url: `${BASE_URL}/account?checkout=success`,
+    cancel_url: `${BASE_URL}/account?checkout=canceled`,
+    allow_promotion_codes: true,
+  });
+
+  return NextResponse.json({ url: session.url });
+}
