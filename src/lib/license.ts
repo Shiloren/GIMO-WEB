@@ -4,6 +4,7 @@
  */
 import { randomBytes, createHash } from "crypto";
 import { SignJWT, importPKCS8 } from "jose";
+import { verifyAuth, type AuthUser } from "@/lib/auth-middleware";
 
 // ---------------------------------------------------------------------------
 // Key generation
@@ -64,16 +65,10 @@ export async function signLicenseJwt(
 }
 
 // ---------------------------------------------------------------------------
-// Auth middleware helper
+// Auth helper (compatibilidad)
 // ---------------------------------------------------------------------------
 
-import { adminAuth, adminDb, ADMIN_EMAILS } from "./firebase-admin";
-
-export interface AuthUser {
-  uid: string;
-  email: string;
-  role: "user" | "admin";
-}
+import { adminDb } from "./firebase-admin";
 
 /**
  * Verifica el Firebase ID token del header Authorization: Bearer <token>.
@@ -82,29 +77,11 @@ export interface AuthUser {
 export async function verifyFirebaseToken(
   req: Request
 ): Promise<AuthUser | null> {
-  try {
-    const authHeader = req.headers.get("authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) return null;
-    const idToken = authHeader.slice(7);
-    const decoded = await adminAuth.verifyIdToken(idToken);
-    const uid = decoded.uid;
-    const email = decoded.email ?? "";
-
-    // Auto-promote admins
-    if (ADMIN_EMAILS.includes(email.toLowerCase())) {
-      await adminDb.collection("users").doc(uid).set(
-        { role: "admin", email, displayName: decoded.name ?? "" },
-        { merge: true }
-      );
-      return { uid, email, role: "admin" };
-    }
-
-    const userDoc = await adminDb.collection("users").doc(uid).get();
-    const role = (userDoc.data()?.role as "user" | "admin") ?? "user";
-    return { uid, email, role };
-  } catch {
+  const result = await verifyAuth(req);
+  if (result instanceof Response) {
     return null;
   }
+  return result;
 }
 
 // ---------------------------------------------------------------------------

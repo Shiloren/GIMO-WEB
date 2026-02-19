@@ -6,6 +6,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { hashLicenseKey, signLicenseJwt } from "@/lib/license";
+import {
+  applyEntitlementDecision,
+  evaluateLicenseEntitlement,
+} from "@/lib/entitlement";
 import { Timestamp } from "firebase-admin/firestore";
 
 export const runtime = "nodejs";
@@ -51,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { licenseKey, machineFingerprint, machineLabel, os, hostname, appVersion } = body;
+    const { licenseKey, machineFingerprint, machineLabel, os, hostname } = body;
 
     if (!licenseKey || !machineFingerprint) {
       return NextResponse.json({ valid: false, error: "licenseKey and machineFingerprint required" }, { status: 400 });
@@ -72,14 +76,16 @@ export async function POST(req: NextRequest) {
     const lic = licDoc.data();
     const licenseId = licDoc.id;
 
-    // 2. Verificar status y expiración
-    if (lic.status !== "active") {
-      return NextResponse.json({ valid: false, error: `License ${lic.status}` }, { status: 403 });
+    // 2. Entitlement policy (fuente única de verdad)
+    const entitlement = await evaluateLicenseEntitlement(licenseId, lic);
+    if (!entitlement.allowed) {
+      await applyEntitlementDecision(licenseId, lic.status, entitlement);
+
+      return NextResponse.json({ valid: false, error: entitlement.reason }, { status: 403 });
     }
-    if (!lic.lifetime && lic.expiresAt && lic.expiresAt.toDate() < new Date()) {
-      await licDoc.ref.update({ status: "expired" });
-      return NextResponse.json({ valid: false, error: "License expired" }, { status: 403 });
-    }
+
+    // Auto-reconciliación por seguridad en caliente
+    await applyEntitlementDecision(licenseId, lic.status, entitlement);
 
     // 3. Contar activaciones activas
     const activQuery = await adminDb.collection("activations")
@@ -136,7 +142,7 @@ export async function POST(req: NextRequest) {
       activeInstallations: activeCount,
       maxInstallations: lic.maxInstallations,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[license/validate]", err);
     return NextResponse.json({ valid: false, error: "Internal server error" }, { status: 500 });
   }

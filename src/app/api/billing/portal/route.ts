@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { verifyFirebaseToken } from "@/lib/license";
+import { requireAuth } from "@/lib/auth-middleware";
 import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -12,8 +12,9 @@ export const runtime = "nodejs";
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://gimo-web.vercel.app";
 
 export async function POST(req: NextRequest) {
-    const user = await verifyFirebaseToken(req);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if ("response" in auth) return auth.response;
+    const user = auth.user;
 
     // Obtener stripeCustomerId del usuario
     const userDoc = await adminDb.collection("users").doc(user.uid).get();

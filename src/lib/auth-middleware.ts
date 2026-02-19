@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 // Fix E: firebase-admin.ts exporta instancias directas (adminAuth, adminDb), no funciones factory
-import { adminAuth, adminDb } from "./firebase-admin";
+import { adminAuth, adminDb, ADMIN_EMAILS } from "./firebase-admin";
 
 export interface AuthUser {
   uid: string;
@@ -13,7 +13,7 @@ export interface AuthUser {
  * Returns the authenticated user or a 401 response.
  */
 export async function verifyAuth(
-  request: NextRequest
+  request: Request
 ): Promise<AuthUser | NextResponse> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -29,6 +29,20 @@ export async function verifyAuth(
     const decoded = await adminAuth.verifyIdToken(idToken);
     const uid = decoded.uid;
     const email = decoded.email ?? "";
+
+    // Auto-promote admins por email allowlist
+    if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+      await adminDb.collection("users").doc(uid).set(
+        {
+          email,
+          displayName: decoded.name ?? "",
+          role: "admin",
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+      return { uid, email, role: "admin" };
+    }
 
     // Fetch role from Firestore
     const db = adminDb;
@@ -59,7 +73,7 @@ export async function verifyAuth(
  * Verify that the user has admin role.
  */
 export async function verifyAdmin(
-  request: NextRequest
+  request: Request
 ): Promise<AuthUser | NextResponse> {
   const result = await verifyAuth(request);
   if (result instanceof NextResponse) return result;
@@ -69,4 +83,30 @@ export async function verifyAdmin(
   }
 
   return result;
+}
+
+/**
+ * Helper estricto para rutas protegidas.
+ */
+export async function requireAuth(
+  request: Request
+): Promise<{ user: AuthUser } | { response: NextResponse }> {
+  const result = await verifyAuth(request);
+  if (result instanceof NextResponse) {
+    return { response: result };
+  }
+  return { user: result };
+}
+
+/**
+ * Helper estricto para rutas admin.
+ */
+export async function requireAdmin(
+  request: Request
+): Promise<{ user: AuthUser } | { response: NextResponse }> {
+  const result = await verifyAdmin(request);
+  if (result instanceof NextResponse) {
+    return { response: result };
+  }
+  return { user: result };
 }

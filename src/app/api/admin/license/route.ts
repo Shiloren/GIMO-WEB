@@ -4,7 +4,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { verifyFirebaseToken, generateRawLicenseKey, hashLicenseKey, getKeyPreview, storePendingKey } from "@/lib/license";
+import { generateRawLicenseKey, hashLicenseKey, getKeyPreview, storePendingKey } from "@/lib/license";
+import { requireAdmin } from "@/lib/auth-middleware";
 import { Timestamp } from "firebase-admin/firestore";
 
 export const runtime = "nodejs";
@@ -13,10 +14,9 @@ export const runtime = "nodejs";
 // POST — Crear licencia vitalicia
 // ─────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const actor = await verifyFirebaseToken(req);
-  if (!actor || actor.role !== "admin") {
-    return NextResponse.json({ error: "Admin only" }, { status: 403 });
-  }
+  const auth = await requireAdmin(req);
+  if ("response" in auth) return auth.response;
+  const actor = auth.user;
 
   const { targetEmail, maxInstallations = 999 } = await req.json();
   if (!targetEmail) {
@@ -66,10 +66,8 @@ export async function POST(req: NextRequest) {
 // GET — Listar licencias (paginado)
 // ─────────────────────────────────────────
 export async function GET(req: NextRequest) {
-  const actor = await verifyFirebaseToken(req);
-  if (!actor || actor.role !== "admin") {
-    return NextResponse.json({ error: "Admin only" }, { status: 403 });
-  }
+  const auth = await requireAdmin(req);
+  if ("response" in auth) return auth.response;
 
   const url = new URL(req.url);
   const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 200);

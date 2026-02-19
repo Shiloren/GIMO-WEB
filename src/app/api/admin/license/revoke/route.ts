@@ -4,16 +4,15 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { verifyFirebaseToken } from "@/lib/license";
+import { requireAdmin } from "@/lib/auth-middleware";
 import { Timestamp } from "firebase-admin/firestore";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-    const actor = await verifyFirebaseToken(req);
-    if (!actor || actor.role !== "admin") {
-        return NextResponse.json({ error: "Admin only" }, { status: 403 });
-    }
+    const auth = await requireAdmin(req);
+    if ("response" in auth) return auth.response;
+    const actor = auth.user;
 
     const { licenseId } = await req.json();
     if (!licenseId) return NextResponse.json({ error: "licenseId required" }, { status: 400 });

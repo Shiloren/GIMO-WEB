@@ -4,14 +4,16 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { verifyFirebaseToken, generateRawLicenseKey, hashLicenseKey, getKeyPreview, storePendingKey } from "@/lib/license";
+import { generateRawLicenseKey, hashLicenseKey, getKeyPreview, storePendingKey } from "@/lib/license";
+import { requireAuth } from "@/lib/auth-middleware";
 import { Timestamp } from "firebase-admin/firestore";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const user = await verifyFirebaseToken(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireAuth(req);
+  if ("response" in auth) return auth.response;
+  const user = auth.user;
 
   // Buscar licencia activa del usuario
   const licQuery = await adminDb.collection("licenses")

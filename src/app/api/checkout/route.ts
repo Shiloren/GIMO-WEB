@@ -4,16 +4,19 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { verifyFirebaseToken } from "@/lib/license";
-import { stripe, STRIPE_STANDARD_PRICE_ID } from "@/lib/stripe";
+import { requireAuth } from "@/lib/auth-middleware";
+import { stripe, getStandardPriceId } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://gimo-web.vercel.app";
 
 export async function POST(req: NextRequest) {
-  const user = await verifyFirebaseToken(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireAuth(req);
+  if ("response" in auth) return auth.response;
+  const user = auth.user;
+
+  const standardPriceId = getStandardPriceId();
 
   // Obtener o crear Stripe Customer
   const userDoc = await adminDb.collection("users").doc(user.uid).get();
@@ -35,7 +38,7 @@ export async function POST(req: NextRequest) {
   const session = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
     mode: "subscription",
-    line_items: [{ price: STRIPE_STANDARD_PRICE_ID, quantity: 1 }],
+    line_items: [{ price: standardPriceId, quantity: 1 }],
     metadata: { firebaseUid: user.uid },
     success_url: `${BASE_URL}/account?checkout=success`,
     cancel_url: `${BASE_URL}/account?checkout=canceled`,

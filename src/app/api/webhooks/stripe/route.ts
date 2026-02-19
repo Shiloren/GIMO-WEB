@@ -16,6 +16,7 @@ import {
   getKeyPreview,
   storePendingKey,
 } from "@/lib/license";
+import { deactivateActiveActivations } from "@/lib/entitlement";
 import { Timestamp } from "firebase-admin/firestore";
 import type Stripe from "stripe";
 
@@ -52,6 +53,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Idempotencia por Stripe event.id (reintentos seguros)
+    const eventRef = adminDb.collection("stripe_events").doc(event.id);
+    const seen = await eventRef.get();
+    if (seen.exists) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
     switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
@@ -69,6 +77,12 @@ export async function POST(req: NextRequest) {
         await handlePaymentFailed(event.data.object as Stripe.Invoice);
         break;
     }
+
+    await eventRef.set({
+      type: event.type,
+      created: event.created,
+      processedAt: Timestamp.now(),
+    });
   } catch (err: unknown) {
     console.error("[stripe webhook] handler error:", err);
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
@@ -120,7 +134,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     plan: "standard",
     lifetime: false,
     maxInstallations: 2,
-    status: "active",
+    // Solo se activa con invoice.paid
+    status: "pending_payment",
     createdAt: Timestamp.now(),
     expiresAt: Timestamp.fromDate(expiresAt),
     regenerationCount: 0,
@@ -162,15 +177,24 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 
   const batch = adminDb.batch();
   batch.update(subDoc.ref, {
-    status: "active",
+    status: subscription.status,
     currentPeriodEnd: newExpiry,
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
   });
+
+  const nextLicenseStatus = ["active", "trialing"].includes(subscription.status)
+    ? "active"
+    : "suspended";
+
   batch.update(adminDb.collection("licenses").doc(subDoc.data().licenseId), {
-    status: "active",
+    status: nextLicenseStatus,
     expiresAt: newExpiry,
   });
   await batch.commit();
+
+  if (nextLicenseStatus !== "active") {
+    await deactivateActiveActivations(subDoc.data().licenseId, `invoice_paid_but_subscription_${subscription.status}`);
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
@@ -189,6 +213,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     { status: "expired" }
   );
   await batch.commit();
+
+  await deactivateActiveActivations(subDoc.data().licenseId, "subscription_deleted");
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
@@ -199,10 +225,28 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     .get();
   if (subQuery.empty) return;
 
-  await subQuery.docs[0].ref.update({
+  const subDoc = subQuery.docs[0];
+  await subDoc.ref.update({
     status: subscription.status,
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
   });
+
+  const nextLicenseStatus = ["active", "trialing"].includes(subscription.status)
+    ? "active"
+    : subscription.status === "canceled"
+      ? "expired"
+      : "suspended";
+
+  await adminDb.collection("licenses").doc(subDoc.data().licenseId).update({
+    status: nextLicenseStatus,
+  });
+
+  if (nextLicenseStatus !== "active") {
+    await deactivateActiveActivations(
+      subDoc.data().licenseId,
+      `subscription_updated_${subscription.status}`
+    );
+  }
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
@@ -216,5 +260,13 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     .get();
   if (subQuery.empty) return;
 
-  await subQuery.docs[0].ref.update({ status: "past_due" });
+  const subDoc = subQuery.docs[0];
+  const licenseId = subDoc.data().licenseId;
+
+  const batch = adminDb.batch();
+  batch.update(subDoc.ref, { status: "past_due" });
+  batch.update(adminDb.collection("licenses").doc(licenseId), { status: "suspended" });
+  await batch.commit();
+
+  await deactivateActiveActivations(licenseId, "invoice_payment_failed");
 }

@@ -18,5 +18,10 @@ export const stripe: Stripe = new Proxy({} as Stripe, {
 });
 
 /** Precio mensual del plan Standard (crear en Stripe Dashboard y copiar aquí) */
-export const STRIPE_STANDARD_PRICE_ID =
-    process.env.STRIPE_STANDARD_PRICE_ID ?? "price_PLACEHOLDER";
+export function getStandardPriceId(): string {
+    const priceId = process.env.STRIPE_STANDARD_PRICE_ID ?? "";
+    if (!priceId || priceId.includes("PLACEHOLDER")) {
+        throw new Error("STRIPE_STANDARD_PRICE_ID env var not set or placeholder");
+    }
+    return priceId;
+}

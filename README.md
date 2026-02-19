@@ -32,6 +32,33 @@ Variables necesarias:
 - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
 - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `FIREBASE_ADMIN_SERVICE_ACCOUNT` (JSON de service account en una sola línea o base64)
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_STANDARD_PRICE_ID`
+- `LICENSE_SIGNING_PRIVATE_KEY` (Ed25519 PKCS8 PEM con `\n` escapados)
+
+## 2.1) Seguridad de licencias (token blindado por entitlement)
+
+Flujo de seguridad implementado:
+
+1. `POST /api/license/validate` **solo firma token** si la licencia cumple entitlement.
+2. Entitlement valida:
+   - licencia no revocada/expirada,
+   - y para no-lifetime: suscripción Stripe asociada en estado permitido (`active`/`trialing`) y periodo vigente.
+3. Si entitlement falla:
+   - se deniega token (`403`),
+   - se reconcilia estado de licencia,
+   - y se desactivan activaciones activas (fail-safe).
+4. Webhooks Stripe sincronizan estado de suscripción y licencia:
+   - `checkout.session.completed` => licencia `pending_payment`
+   - `invoice.paid` => licencia `active` (si corresponde)
+   - `invoice.payment_failed` => licencia `suspended`
+   - `customer.subscription.updated/deleted` => sincronización + corte de activaciones si no está activa
+
+Endpoint admin adicional:
+
+- `POST /api/admin/license/reconcile` (admin only): revalida consistencia de licencias no-lifetime.
 
 ## 3) Arrancar en local
 
@@ -92,3 +119,17 @@ Con eso funcionarán:
 - `npm run lint` → lint
 - `npm run sanity` → sanity dev (CLI)
 - `npm run sanity:deploy` → deploy de Sanity Studio
+
+## Validación manual recomendada (go-live)
+
+Antes de pasar a producción con Stripe real:
+
+1. Crear checkout de prueba y confirmar que la licencia nace en `pending_payment`.
+2. Simular `invoice.paid` y verificar transición a `active`.
+3. Simular `invoice.payment_failed` y verificar:
+   - licencia `suspended`,
+   - desactivación de activaciones,
+   - `/api/license/validate` devuelve `403` sin token.
+4. Simular `customer.subscription.deleted` y verificar licencia no usable.
+5. Ejecutar reconciliación admin y comprobar que corrige inconsistencias:
+   - `POST /api/admin/license/reconcile`.
