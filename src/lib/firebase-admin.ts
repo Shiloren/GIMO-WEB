@@ -32,11 +32,11 @@ function initAdmin(): App {
   }
 
   const expectedProjectId =
-    process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    (process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
   if (
     expectedProjectId &&
     typeof serviceAccount.project_id === "string" &&
-    serviceAccount.project_id !== expectedProjectId
+    serviceAccount.project_id.trim() !== expectedProjectId
   ) {
     throw new Error(
       `Firebase Admin project mismatch: service_account=${serviceAccount.project_id}, expected=${expectedProjectId}`
