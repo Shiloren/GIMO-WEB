@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
             {
                 error: "Internal server error",
                 code,
-                detail: process.env.NODE_ENV === "production" ? undefined : message,
+                detail: message,
             },
             { status: 500 }
         );
