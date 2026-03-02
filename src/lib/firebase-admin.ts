@@ -9,18 +9,38 @@ import { getAuth, Auth } from "firebase-admin/auth";
 function initAdmin(): App {
   if (getApps().length > 0) return getApps()[0];
 
-  const serviceAccountEnv = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT;
+  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT;
   if (!serviceAccountEnv) {
-    throw new Error("FIREBASE_ADMIN_SERVICE_ACCOUNT env var not set");
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY env var not set");
   }
 
-  let serviceAccount: object;
+  let serviceAccount: any;
   try {
     // Soporta JSON directo o base64-encoded
     const decoded = Buffer.from(serviceAccountEnv, "base64").toString("utf-8");
     serviceAccount = JSON.parse(decoded);
   } catch {
     serviceAccount = JSON.parse(serviceAccountEnv);
+  }
+
+  // Normaliza PEM por si viene serializado en una sola línea o con espacios dañados.
+  if (typeof serviceAccount.private_key === "string") {
+    serviceAccount.private_key = serviceAccount.private_key
+      .replace(/\\n/g, "\n")
+      .replace("BEGINPRIVATEKEY", "BEGIN PRIVATE KEY")
+      .replace("ENDPRIVATEKEY", "END PRIVATE KEY");
+  }
+
+  const expectedProjectId =
+    process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (
+    expectedProjectId &&
+    typeof serviceAccount.project_id === "string" &&
+    serviceAccount.project_id !== expectedProjectId
+  ) {
+    throw new Error(
+      `Firebase Admin project mismatch: service_account=${serviceAccount.project_id}, expected=${expectedProjectId}`
+    );
   }
 
   return initializeApp({ credential: cert(serviceAccount as any) });

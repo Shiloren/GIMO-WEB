@@ -89,14 +89,7 @@ export async function POST(req: NextRequest) {
             (typeof userData.displayName === "string" ? userData.displayName : "");
         const role: "user" | "admin" = userData.role === "admin" ? "admin" : "user";
 
-        const activeLicenseQuery = await adminDb
-            .collection("licenses")
-            .where("userId", "==", uid)
-            .where("status", "==", "active")
-            .orderBy("createdAt", "desc")
-            .limit(1)
-            .get();
-
+        // License lookup — tolerant to missing indexes (FAILED_PRECONDITION)
         let license = {
             plan: "none" as LicensePlan,
             status: "none" as LicenseStatus,
@@ -107,52 +100,72 @@ export async function POST(req: NextRequest) {
             expiresAt: null as string | null,
         };
 
-        if (!activeLicenseQuery.empty) {
-            const licDoc = activeLicenseQuery.docs[0];
-            const lic = licDoc.data();
-
-            const activationsQuery = await adminDb
-                .collection("activations")
-                .where("licenseId", "==", licDoc.id)
-                .where("status", "==", "active")
+        try {
+            const recentLicensesQuery = await adminDb
+                .collection("licenses")
+                .where("userId", "==", uid)
+                .orderBy("createdAt", "desc")
+                .limit(10)
                 .get();
 
-            const isLifetime = Boolean(lic.lifetime ?? false);
-            const mappedStatus = normalizeLicenseStatus(lic.status);
+            const activeLicenseDoc = recentLicensesQuery.docs.find(
+                (doc) => (doc.data()?.status ?? "") === "active"
+            );
 
-            license = {
-                plan: normalizeLicensePlan(lic.plan),
-                status: mappedStatus === "none" ? "active" : mappedStatus,
-                isLifetime,
-                keyPreview: typeof lic.keyPreview === "string" ? lic.keyPreview : "",
-                installationsUsed: activationsQuery.size,
-                installationsMax:
-                    typeof lic.maxInstallations === "number" ? lic.maxInstallations : 0,
-                expiresAt: isLifetime ? null : toIso(lic.expiresAt),
-            };
+            if (activeLicenseDoc) {
+                const licDoc = activeLicenseDoc;
+                const lic = licDoc.data();
+
+                const activationsQuery = await adminDb
+                    .collection("activations")
+                    .where("licenseId", "==", licDoc.id)
+                    .where("status", "==", "active")
+                    .get();
+
+                const isLifetime = Boolean(lic.lifetime ?? false);
+                const mappedStatus = normalizeLicenseStatus(lic.status);
+
+                license = {
+                    plan: normalizeLicensePlan(lic.plan),
+                    status: mappedStatus === "none" ? "active" : mappedStatus,
+                    isLifetime,
+                    keyPreview: typeof lic.keyPreview === "string" ? lic.keyPreview : "",
+                    installationsUsed: activationsQuery.size,
+                    installationsMax:
+                        typeof lic.maxInstallations === "number" ? lic.maxInstallations : 0,
+                    expiresAt: isLifetime ? null : toIso(lic.expiresAt),
+                };
+            }
+        } catch (licErr) {
+            console.warn("[orchestrator/verify] License query failed (missing index?), defaulting to none:", (licErr as Error).message);
         }
 
-        const subscriptionQuery = await adminDb
-            .collection("subscriptions")
-            .where("userId", "==", uid)
-            .orderBy("currentPeriodEnd", "desc")
-            .limit(1)
-            .get();
+        // Subscription lookup — tolerant to missing indexes
+        let subscription = {
+            status: "none" as SubscriptionStatus,
+            currentPeriodEnd: null as string | null,
+            cancelAtPeriodEnd: false,
+        };
 
-        const subscription = subscriptionQuery.empty
-            ? {
-                status: "none" as SubscriptionStatus,
-                currentPeriodEnd: null as string | null,
-                cancelAtPeriodEnd: false,
-            }
-            : (() => {
+        try {
+            const subscriptionQuery = await adminDb
+                .collection("subscriptions")
+                .where("userId", "==", uid)
+                .orderBy("currentPeriodEnd", "desc")
+                .limit(1)
+                .get();
+
+            if (!subscriptionQuery.empty) {
                 const s = subscriptionQuery.docs[0].data();
-                return {
+                subscription = {
                     status: normalizeSubscriptionStatus(s.status),
                     currentPeriodEnd: toIso(s.currentPeriodEnd),
                     cancelAtPeriodEnd: Boolean(s.cancelAtPeriodEnd ?? false),
                 };
-            })();
+            }
+        } catch (subErr) {
+            console.warn("[orchestrator/verify] Subscription query failed (missing index?), defaulting to none:", (subErr as Error).message);
+        }
 
         return NextResponse.json({
             uid,
@@ -163,12 +176,35 @@ export async function POST(req: NextRequest) {
             subscription,
         });
     } catch (err) {
-        if (err instanceof Error && /auth\/.+|token/i.test(err.message)) {
-            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+        const message = err instanceof Error ? err.message : String(err);
+        const code = (err as { code?: string })?.code ?? "UNKNOWN";
+
+        console.error("[orchestrator/verify]", { code, message, stack: err instanceof Error ? err.stack : undefined });
+
+        // Firebase Auth errors (expired token, revoked, invalid signature, etc.)
+        if (err instanceof Error && /auth\/.+|token/i.test(message)) {
+            // Extract Firebase error code like "auth/id-token-expired"
+            const fbCode = message.match(/(auth\/[\w-]+)/)?.[1] ?? "auth/unknown";
+            return NextResponse.json(
+                { error: "Firebase token rejected", code: fbCode, detail: message },
+                { status: 401 }
+            );
         }
-        console.error("[orchestrator/verify]", err);
+
+        // Firestore / permission errors
+        if (code === "7" || /PERMISSION_DENIED/i.test(message)) {
+            return NextResponse.json(
+                { error: "Firestore permission denied", code: "FIRESTORE_PERMISSION_DENIED", detail: message },
+                { status: 500 }
+            );
+        }
+
         return NextResponse.json(
-            { error: "Internal server error" },
+            {
+                error: "Internal server error",
+                code,
+                detail: process.env.NODE_ENV === "production" ? undefined : message,
+            },
             { status: 500 }
         );
     }
