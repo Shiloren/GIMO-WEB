@@ -1,12 +1,15 @@
 export type NavItem = { label: string; href: string };
 export type CtaButton = { label: string; href: string; variant: "primary" | "secondary" };
-export type LogoItem = { label: string };
 export type FeatureItem = {
     title: string;
     description: string;
-    icon: "GitMerge" | "Activity" | "Users";
-    accent: "indigo" | "purple" | "emerald";
+    icon: "GitMerge" | "Activity" | "Users" | "Box" | "Shield" | "Cpu";
+    accent: "indigo" | "purple" | "emerald" | "amber" | "rose" | "blue";
 };
+export type WorkflowStep = { step: string; title: string; description: string };
+export type IntegrationItem = { name: string; description: string };
+export type DifferentiationItem = { title: string; description: string };
+export type StatusItem = { label: string; status: "completed" | "in_development" | "experimental" };
 
 export type SiteSettings = {
     siteName: string;
@@ -16,20 +19,53 @@ export type SiteSettings = {
 };
 
 export type LandingPageContent = {
+    // Hero
     heroBadge: string;
-    heroTitleLine1: string;
-    heroTitleLine2: string;
+    heroTitle: string;
     heroDescription: string;
     heroCtas: CtaButton[];
-    trustTitle: string;
-    trustLogos: LogoItem[];
-    featuresTitle: string;
-    featuresDescription: string;
-    features: FeatureItem[];
-    codeSectionTitle1: string;
-    codeSectionTitle2: string;
-    codeSectionDescription: string;
+
+    // Authority
+    authorityText: string;
+
+    // Why GIMO Exists (Problem)
+    problemTitle: string;
+    problemDescription: string[];
+    problemConclusion: string;
+
+    // Workflow
+    workflowTitle: string;
+    workflowDescription: string;
+    workflowSteps: WorkflowStep[];
+
+    // Integrations
+    integrationsTitle: string;
+    integrationsDescription: string;
+    integrations: IntegrationItem[];
+
+    // Differentiation
+    differentiationTitle: string;
+    differentiationDescription: string;
+    differentiationPoints: DifferentiationItem[];
+
+    // Built by engineers
+    builtByTitle: string;
+    builtByDescription: string;
+    builtByPoints: string[];
+
+    // Design Principles
+    principlesTitle: string;
+    principles: FeatureItem[];
+
+    // Project Status
+    statusTitle: string;
+    statusStage: string;
+    statusItems: StatusItem[];
+    statusFooter: string;
+
+    // Final CTA
     finalCtaTitle: string;
+    finalCtaDescription: string;
     finalCtas: CtaButton[];
 };
 
@@ -42,60 +78,132 @@ export const defaultLandingData: LandingData = {
     siteSettings: {
         siteName: "GIMO",
         navItems: [
-            { label: "Producto", href: "#" },
-            { label: "Soluciones", href: "#" },
-            { label: "Precios", href: "#" },
-            { label: "Docs", href: "#" },
+            { label: "Why", href: "#problem" },
+            { label: "How It Works", href: "#workflow" },
+            { label: "Principles", href: "#principles" },
+            { label: "Integrations", href: "#integrations" },
+            { label: "Differentiation", href: "#differentiation" },
+            { label: "Built by Engineers", href: "#built-by-engineers" },
+            { label: "Status", href: "#status" },
         ],
         signInLabel: "Sign In",
-        footerCopyright: "© 2024 GIMO Inc. Todos los derechos reservados.",
+        footerCopyright: "© 2024 GIMO Inc. Built by engineers.",
     },
     landingPage: {
-        heroBadge: "Nuevo: Soporte nativo para Llama 3 & GPT-4o",
-        heroTitleLine1: "El Sistema Operativo para",
-        heroTitleLine2: "Sistemas Multi-Agente.",
+        heroBadge: "AI agents should not execute actions unsupervised.",
+        heroTitle: "Control your AI agents before they control your infrastructure.",
         heroDescription:
-            "Diseñe, orqueste y escale flujos de IA complejos con una arquitectura basada en grafos. Del prototipo a producción, sin cajas negras.",
+            "Local-first orchestration system for multi-agent workflows with human approval, token control and deterministic execution.",
         heroCtas: [
-            { label: "Crear primer flujo", href: "#", variant: "primary" },
-            { label: "Instalar SDK", href: "#", variant: "secondary" },
+            { label: "Join Early Access", href: "#", variant: "primary" },
+            { label: "Read Architecture", href: "#", variant: "secondary" },
         ],
-        trustTitle: "Utilizado por equipos de ingeniería en",
-        trustLogos: [{ label: "ACME Corp" }, { label: "Nebula AI" }, { label: "Quantum" }, { label: "Starlight" }, { label: "Vortex" }],
-        featuresTitle: "Construido para producción.",
-        featuresDescription:
-            "Deje atrás los scripts en Python difíciles de mantener. GIMO le ofrece una infraestructura visual robusta para gestionar la complejidad de los agentes.",
-        features: [
+        authorityText: "Built for real production environments. Designed for deterministic multi-agent execution.",
+        problemTitle: "Why GIMO exists",
+        problemDescription: [
+            "AI agents are incredibly powerful, but dangerous.",
+            "Most systems let them execute actions directly. That is not acceptable for real infrastructure.",
+            "GIMO separates generation from execution."
+        ],
+        problemConclusion: "Agents propose. Humans approve. Systems remain under control.",
+        workflowTitle: "How GIMO works",
+        workflowDescription: "A deterministic control layer between autonomous generation and real-world execution.",
+        workflowSteps: [
             {
-                title: "Lógica Condicional Compleja",
-                description:
-                    "Ramifique conversaciones basándose en análisis de sentimiento, clasificación de intenciones o respuestas de API externas.",
+                step: "01",
+                title: "Agents propose",
+                description: "Agents generate draft actions and execution plans with full context and cost estimates.",
+            },
+            {
+                step: "02",
+                title: "Humans approve",
+                description: "Critical actions pause in an approval queue. Operators can inspect, edit, reject or approve.",
+            },
+            {
+                step: "03",
+                title: "Systems stay under control",
+                description: "Only approved actions execute. Every transition is logged for auditing and reproducibility.",
+            },
+        ],
+        integrationsTitle: "Integrations",
+        integrationsDescription: "Compatible with production AI stacks out of the box.",
+        integrations: [
+            {
+                name: "MCP",
+                description: "Model Context Protocol support to orchestrate tools and agent resources safely.",
+            },
+            {
+                name: "Provider abstraction",
+                description: "Switch between OpenAI, Anthropic, Ollama and future providers without rewriting control logic.",
+            },
+            {
+                name: "Local runtime",
+                description: "Run local models and keep governance decisions close to your infrastructure boundary.",
+            },
+        ],
+        differentiationTitle: "Why GIMO is different",
+        differentiationDescription: "Most frameworks optimize for agent autonomy. GIMO optimizes for controlled execution.",
+        differentiationPoints: [
+            {
+                title: "Control plane, not another framework",
+                description: "GIMO sits between generation and execution to enforce policy before impact.",
+            },
+            {
+                title: "Governance is native",
+                description: "Approval gates, token governance and audit trails are first-class, not bolted-on scripts.",
+            },
+            {
+                title: "Built for infrastructure reality",
+                description: "Deterministic multi-agent execution for environments where mistakes are expensive.",
+            },
+        ],
+        builtByTitle: "Built by engineers",
+        builtByDescription: "We built GIMO after watching autonomous agents bypass review and execute directly against real systems.",
+        builtByPoints: [
+            "We separate generation from execution by design.",
+            "Human approval is a default safety boundary, not an add-on.",
+            "Governance, observability and determinism come before autonomy hype.",
+        ],
+        principlesTitle: "Design Principles",
+        principles: [
+            {
+                title: "Human-in-the-loop by default",
+                description: "Agents never execute critical actions without approval.",
+                icon: "Users",
+                accent: "emerald",
+            },
+            {
+                title: "Deterministic execution",
+                description: "Every action is recorded, auditable and reproducible.",
                 icon: "GitMerge",
                 accent: "indigo",
             },
             {
-                title: "Observabilidad Full-Stack",
-                description:
-                    "Rastree cada token, latencia y costo. Reproduzca sesiones paso a paso para depurar comportamientos inesperados en sus agentes.",
-                icon: "Activity",
-                accent: "purple",
+                title: "Local-first architecture",
+                description: "Your data, secrets and tokens never leave your environment.",
+                icon: "Shield",
+                accent: "rose",
             },
             {
-                title: "Human-in-the-Loop",
-                description:
-                    "Integre puntos de aprobación manual para acciones sensibles. Sus agentes trabajan, usted supervisa cuando es necesario.",
-                icon: "Users",
-                accent: "emerald",
+                title: "Provider-agnostic",
+                description: "Works seamlessly with OpenAI, Anthropic, Ollama and future LLMs.",
+                icon: "Cpu",
+                accent: "blue",
             },
         ],
-        codeSectionTitle1: "Visual para diseñar.",
-        codeSectionTitle2: "Código para escalar.",
-        codeSectionDescription:
-            'Todo lo que construye en el editor visual se compila a un archivo JSON o YAML limpio, integrable en su CI/CD. Sin "vendor lock-in" oculto.',
-        finalCtaTitle: "Empiece a construir hoy.",
+        statusTitle: "Project status",
+        statusStage: "Private alpha",
+        statusItems: [
+            { label: "Core engine", status: "completed" },
+            { label: "Orchestrator API", status: "in_development" },
+            { label: "Control Panel UI", status: "experimental" },
+        ],
+        statusFooter: "Early access coming soon.",
+        finalCtaTitle: "Build multi-agent systems that don't go rogue.",
+        finalCtaDescription: "GIMO introduces a controlled execution layer between agents and your infrastructure.",
         finalCtas: [
-            { label: "Solicitar Demo", href: "#", variant: "primary" },
-            { label: "Ver Precios", href: "#", variant: "secondary" },
+            { label: "Request Access", href: "#", variant: "primary" },
+            { label: "Join Early Access", href: "#", variant: "secondary" },
         ],
     },
 };
@@ -113,8 +221,23 @@ export function mergeLandingData(input?: Partial<LandingData> | null): LandingDa
             ...defaultLandingData.landingPage,
             ...input.landingPage,
             heroCtas: input.landingPage?.heroCtas?.length ? input.landingPage.heroCtas : defaultLandingData.landingPage.heroCtas,
-            trustLogos: input.landingPage?.trustLogos?.length ? input.landingPage.trustLogos : defaultLandingData.landingPage.trustLogos,
-            features: input.landingPage?.features?.length ? input.landingPage.features : defaultLandingData.landingPage.features,
+            problemDescription: input.landingPage?.problemDescription?.length
+                ? input.landingPage.problemDescription
+                : defaultLandingData.landingPage.problemDescription,
+            workflowSteps: input.landingPage?.workflowSteps?.length
+                ? input.landingPage.workflowSteps
+                : defaultLandingData.landingPage.workflowSteps,
+            integrations: input.landingPage?.integrations?.length
+                ? input.landingPage.integrations
+                : defaultLandingData.landingPage.integrations,
+            differentiationPoints: input.landingPage?.differentiationPoints?.length
+                ? input.landingPage.differentiationPoints
+                : defaultLandingData.landingPage.differentiationPoints,
+            builtByPoints: input.landingPage?.builtByPoints?.length
+                ? input.landingPage.builtByPoints
+                : defaultLandingData.landingPage.builtByPoints,
+            principles: input.landingPage?.principles?.length ? input.landingPage.principles : defaultLandingData.landingPage.principles,
+            statusItems: input.landingPage?.statusItems?.length ? input.landingPage.statusItems : defaultLandingData.landingPage.statusItems,
             finalCtas: input.landingPage?.finalCtas?.length ? input.landingPage.finalCtas : defaultLandingData.landingPage.finalCtas,
         },
     };

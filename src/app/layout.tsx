@@ -14,7 +14,7 @@ const jetBrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "GIMO",
-  description: "Landing de GIMO construida con Next.js + Sanity + Vercel",
+  description: "Landing de GIMO construida con Next.js + Vercel",
 };
 
 export default function RootLayout({
